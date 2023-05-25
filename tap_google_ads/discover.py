@@ -31,6 +31,7 @@ STREAMS = [
     "dynamic_search_ads_search_term_view",
     "expanded_landing_page_view",
     "gender_view",
+    "geo_target_constant",
     "geographic_view",
     "keyword_view",
     "label",
