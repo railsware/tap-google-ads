@@ -1265,4 +1265,11 @@ def initialize_reports(resource_schema):
             ["_sdc_record_hash"],
             {"video_id"},
         ),
+        "campaign_performance_report_with_unique_user_stats": ReportStream(
+            report_definitions.CAMPAIGN_WITH_UNIQUE_USER_STATS_PERFORMANCE_REPORT_FIELDS,
+            ["campaign"],
+            resource_schema,
+            ["_sdc_record_hash"],
+            {"campaign_id"},
+        )
     }
