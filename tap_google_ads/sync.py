@@ -1,10 +1,14 @@
 import json
 import singer
+from google.ads.googleads.errors import GoogleAdsException
+
 from tap_google_ads.client import create_sdk_client
 from tap_google_ads.streams import initialize_core_streams, initialize_reports
 
 LOGGER = singer.get_logger()
 DEFAULT_QUERY_LIMIT = 1000000
+
+CUSTOMER_ACCOUNT_NOT_ACTIVE_ERROR = "The customer account can't be accessed because it is not yet enabled or has been deactivated"
 
 
 def get_currently_syncing(state):
@@ -126,7 +130,14 @@ def do_sync(config, catalog, resource_schema, state):
             else:
                 stream_obj = report_streams[stream_name]
 
-            stream_obj.sync(sdk_client, customer, catalog_entry, config, state, query_limit=query_limit)
+            try:
+                stream_obj.sync(sdk_client, customer, catalog_entry, config, state, query_limit=query_limit)
+            except GoogleAdsException as e:
+                for error in e.failure.errors:
+                    if CUSTOMER_ACCOUNT_NOT_ACTIVE_ERROR in error.message:
+                        raise Exception(f"Data cannot be fetched for \"{customer['customerName']}\"")
+
+                raise e
 
     state.pop("currently_syncing", None)
     singer.write_state(state)
