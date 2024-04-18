@@ -766,7 +766,7 @@ class ReportStream(BaseStream):
         except GoogleAdsException as err:
             LOGGER.warning("Failed query: %s", query)
             LOGGER.critical(str(err.failure.errors[0].message))
-            raise RuntimeError from None
+            raise err
 
         with Transformer() as transformer:
             # Pages are fetched automatically while iterating through the response
