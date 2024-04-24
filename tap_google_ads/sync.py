@@ -133,11 +133,17 @@ def do_sync(config, catalog, resource_schema, state):
             try:
                 stream_obj.sync(sdk_client, customer, catalog_entry, config, state, query_limit=query_limit)
             except GoogleAdsException as e:
+                no_raise = False
                 for error in e.failure.errors:
                     if CUSTOMER_ACCOUNT_NOT_ACTIVE_ERROR in error.message:
-                        raise Exception(f"Data cannot be fetched for \"{customer['customerName']}\"")
-
-                raise e
+                        LOGGER.warning(
+                            f"The ad account with the name \"{customer['customerName']}\" "
+                            "can't be accessed because it is not yet enabled or "
+                            "has been deactivated."
+                        )
+                        no_raise = True
+                if not no_raise:
+                    raise e
 
     state.pop("currently_syncing", None)
     singer.write_state(state)
