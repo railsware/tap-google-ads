@@ -10,11 +10,11 @@ from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
 from requests.exceptions import ReadTimeout
 import backoff
+
+from tap_google_ads.api_version import API_VERSION
 from . import report_definitions
 
 LOGGER = singer.get_logger()
-
-API_VERSION = "v20"
 
 API_PARAMETERS = {
     "omit_unselected_resource_names": "true"
@@ -975,6 +975,13 @@ def initialize_core_streams(resource_schema):
             resource_schema,
             ["id"],
            filter_param="carrier_constant.id"
+        ),
+        "geo_constants": BaseStream(
+            report_definitions.GEO_CONSTANTS_FIELDS,
+            ["geo_target_constant"],
+            resource_schema,
+            ["id"],
+            filter_param="geo_target_constant.id"
         ),
         "labels": BaseStream(
             report_definitions.LABEL_FIELDS,
