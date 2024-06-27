@@ -10,11 +10,11 @@ from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
 from requests.exceptions import ReadTimeout
 import backoff
+
+from tap_google_ads.api_version import API_VERSION
 from . import report_definitions
 
 LOGGER = singer.get_logger()
-
-API_VERSION = "v15"
 
 API_PARAMETERS = {
     "omit_unselected_resource_names": "true"
