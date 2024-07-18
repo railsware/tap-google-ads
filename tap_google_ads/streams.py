@@ -485,7 +485,7 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
                         json_message = google_message_to_json(message)
                         transformed_message = self.transform_keys(json_message)
                         record = transformer.transform(transformed_message, stream["schema"], singer.metadata.to_map(stream_mdata))
-                        record = self.add_account_name(customer, record)
+                        record = self.add_account_info(customer, record)
 
                         singer.write_record(stream_name, record)
                         counter.increment()
@@ -512,9 +512,10 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
             state['bookmarks'].pop(stream["tap_stream_id"])
             singer.write_state(state)
 
-    def add_account_name(self, customer, record):
-        """Add account name to the record"""
+    def add_account_info(self, customer, record):
+        """Add account name and ID to the record"""
 
+        record["Account ID"] = customer["customerId"]
         record["Account name"] = customer["customerName"]
 
         return record
@@ -775,7 +776,7 @@ class ReportStream(BaseStream):
                 transformed_message = self.transform_keys(json_message)
                 record = transformer.transform(transformed_message, stream["schema"])
                 record["_sdc_record_hash"] = generate_hash(record, stream_mdata)
-                record = self.add_account_name(customer, record)
+                record = self.add_account_info(customer, record)
 
                 singer.write_record(stream_name, record)
 
@@ -845,7 +846,7 @@ class OneDayResultsReportStream(ReportStream):
                     transformed_message = self.transform_keys(json_message)
                     record = transformer.transform(transformed_message, stream["schema"])
                     record["_sdc_record_hash"] = generate_hash(record, stream_mdata)
-                    record = self.add_account_name(customer, record)
+                    record = self.add_account_info(customer, record)
 
                     singer.write_record(stream_name, record)
 
