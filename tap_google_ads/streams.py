@@ -508,16 +508,19 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
         return record
 
 
-def get_query_date(start_date, bookmark, conversion_window_date):
+def get_query_date(start_date, bookmark, conversion_window):
     """Return a date within the conversion window and after start date
 
-    All inputs are datetime strings.
+    start_date and bookmark are datetime strings.
+    conversion_window is timedelta.
     NOTE: `bookmark` may be None"""
     if not bookmark:
         return singer.utils.strptime_to_utc(start_date)
     else:
-        query_date = min(bookmark, max(start_date, conversion_window_date))
-        return singer.utils.strptime_to_utc(query_date)
+        return max(
+            singer.utils.strptime_to_utc(bookmark) - conversion_window,
+            singer.utils.strptime_to_utc(start_date)
+        )
 
 
 class UserInterestStream(BaseStream):
@@ -716,7 +719,6 @@ class ReportStream(BaseStream):
         conversion_window = timedelta(
             days=get_conversion_window(config)
         )
-        conversion_window_date = utils.now().replace(hour=0, minute=0, second=0, microsecond=0) - conversion_window
 
         bookmark_object = singer.get_bookmark(state, stream["tap_stream_id"], customer["customerId"], default={})
 
@@ -725,7 +727,7 @@ class ReportStream(BaseStream):
         query_date = get_query_date(
             start_date=config["start_date"],
             bookmark=bookmark_value,
-            conversion_window_date=singer.utils.strftime(conversion_window_date)
+            conversion_window=conversion_window,
         )
 
         end_date = config.get("end_date")
