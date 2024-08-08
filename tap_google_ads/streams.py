@@ -11,6 +11,8 @@ from google.api_core.exceptions import ServerError, TooManyRequests
 from requests.exceptions import ReadTimeout
 import backoff
 
+from dateutil.relativedelta import relativedelta
+
 from tap_google_ads.api_version import API_VERSION
 from . import report_definitions
 
@@ -21,6 +23,12 @@ API_PARAMETERS = {
 }
 
 REPORTS_WITH_90_DAY_MAX = frozenset(
+    [
+        "click_performance_report",
+    ]
+)
+
+REPORTS_ONE_DAY_ONLY = frozenset(
     [
         "click_performance_report",
     ]
@@ -55,6 +63,52 @@ def get_request_timeout(config):
         LOGGER.warning(f"The provided request_timeout {request_timeout} is invalid; it will be set to the default request timeout of {DEFAULT_REQUEST_TIMEOUT}.")
         request_timeout = DEFAULT_REQUEST_TIMEOUT
     return request_timeout
+
+
+def get_split_by_period(config) -> relativedelta | None:
+    """Constructs the date range for a single API request from config and errors
+    on invalid values.
+
+    The value has the following schema:
+
+    ```
+    "split_by_period": {
+      "days": <int>,
+      "month": <int>,
+      "years": <int>
+    } 
+    ```
+
+    At least "days" or "months" or "years" must be set and be greater than 0.
+
+    If value is set, it will be used to split the requested period into series
+    of date ranges and each date range will be requested separately.
+
+    If value is not set or can't be correctly parsed, the function returns `None`
+    and the tap fetches the whole requested period in one request.
+    """
+
+    split_by_period = config.get("split_by_period")
+
+    if split_by_period is None:
+        return None
+
+    days = split_by_period.get("days") or "0"
+    months = split_by_period.get("months") or "0"
+    years = split_by_period.get("years") or "0"
+
+    try:
+        period = relativedelta(
+            days = int(days),
+            months = int(months),
+            years = int(years),
+        )
+    except (ValueError, TypeError):
+        LOGGER.warning(f"The provided split_by_period value {split_by_period} is invalid; it will be set to None.")
+        return None
+
+    return period
+
 
 def create_nested_resource_schema(resource_schema, fields):
     new_schema = {
@@ -157,20 +211,11 @@ def create_core_stream_query(resource_name, selected_fields, last_pk_fetched, fi
 
 
 def create_report_query(resource_name, selected_fields, start_date, end_date):
-
     format_str = "%Y-%m-%d"
     formatted_start_date = utils.strftime(start_date, format_str=format_str)
     formatted_end_date = utils.strftime(end_date, format_str=format_str)
     fields = ",".join(selected_fields)
     report_query = f"SELECT {fields} FROM {resource_name} WHERE segments.date BETWEEN '{formatted_start_date}' AND '{formatted_end_date}' {build_parameters()}"
-
-    return report_query
-
-
-def create_one_day_report_query(resource_name, selected_fields, query_date):
-    format_str = "%Y-%m-%d"
-    query_date = utils.strftime(query_date, format_str=format_str)
-    report_query = f"SELECT {','.join(selected_fields)} FROM {resource_name} WHERE segments.date = '{query_date}' {build_parameters()}"
 
     return report_query
 
@@ -513,23 +558,24 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
             singer.write_state(state)
 
     def add_account_name(self, customer, record):
-        """Add account name to the record"""
-
         record["Account name"] = customer["customerName"]
 
         return record
 
 
-def get_query_date(start_date, bookmark, conversion_window_date):
+def get_query_date(start_date, bookmark, conversion_window):
     """Return a date within the conversion window and after start date
 
-    All inputs are datetime strings.
+    start_date and bookmark are datetime strings.
+    conversion_window is timedelta.
     NOTE: `bookmark` may be None"""
     if not bookmark:
         return singer.utils.strptime_to_utc(start_date)
     else:
-        query_date = min(bookmark, max(start_date, conversion_window_date))
-        return singer.utils.strptime_to_utc(query_date)
+        return max(
+            singer.utils.strptime_to_utc(bookmark) - conversion_window,
+            singer.utils.strptime_to_utc(start_date)
+        )
 
 
 class UserInterestStream(BaseStream):
@@ -680,7 +726,7 @@ class ReportStream(BaseStream):
             # Add inclusion metadata
             if self.behavior[report_field]:
                 inclusion = "available"
-                if transformed_field_name in self.automatic_keys:
+                if transformed_field_name in ({"date"} | self.automatic_keys):
                     inclusion = "automatic"
             else:
                 inclusion = "unsupported"
@@ -728,7 +774,6 @@ class ReportStream(BaseStream):
         conversion_window = timedelta(
             days=get_conversion_window(config)
         )
-        conversion_window_date = utils.now().replace(hour=0, minute=0, second=0, microsecond=0) - conversion_window
 
         bookmark_object = singer.get_bookmark(state, stream["tap_stream_id"], customer["customerId"], default={})
 
@@ -737,7 +782,7 @@ class ReportStream(BaseStream):
         query_date = get_query_date(
             start_date=config["start_date"],
             bookmark=bookmark_value,
-            conversion_window_date=singer.utils.strftime(conversion_window_date)
+            conversion_window=conversion_window,
         )
 
         end_date = config.get("end_date")
@@ -750,92 +795,33 @@ class ReportStream(BaseStream):
             cutoff = end_date.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=90)
             query_date = max(query_date, cutoff)
             if query_date == cutoff:
-                LOGGER.info(
-                    f"Stream: {stream_name} supports only 90 days of data. "
-                    f"Setting start date to {utils.strftime(query_date, '%Y-%m-%d')}."
-                )
+                LOGGER.info(f"Stream: {stream_name} supports only 90 days of data. Setting query date to {utils.strftime(query_date, '%Y-%m-%d')}.")
 
-        query = create_report_query(resource_name, selected_fields, start_date=query_date, end_date=end_date)
-        LOGGER.info(
-            f"Requesting {stream_name} data for dates from "
-            f"{utils.strftime(query_date, '%Y-%m-%d')} to {utils.strftime(end_date, '%Y-%m-%d')}."
-        )
+        if selected_fields == {'segments.date'}:
+            raise Exception(f"Selected fields is currently limited to {', '.join(selected_fields)}. Please select at least one attribute and metric in order to replicate {stream_name}.")
 
-        try:
-            response = make_request(gas, query, customer["customerId"], config)
-        except GoogleAdsException as err:
-            LOGGER.warning("Failed query: %s", query)
-            LOGGER.critical(str(err.failure.errors[0].message))
-            raise err
-
-        with Transformer() as transformer:
-            # Pages are fetched automatically while iterating through the response
-            for message in response:
-                json_message = google_message_to_json(message)
-                transformed_message = self.transform_keys(json_message)
-                record = transformer.transform(transformed_message, stream["schema"])
-                record["_sdc_record_hash"] = generate_hash(record, stream_mdata)
-                record = self.add_account_name(customer, record)
-
-                singer.write_record(stream_name, record)
-
-        new_bookmark_value = {replication_key: utils.strftime(query_date)}
-        singer.write_bookmark(state, stream["tap_stream_id"], customer["customerId"], new_bookmark_value)
-
-        singer.write_state(state)
-
-
-class OneDayResultsReportStream(ReportStream):
-    def sync(self, sdk_client, customer, stream, config, state, query_limit):
-        gas = sdk_client.get_service("GoogleAdsService", version=API_VERSION)
-        resource_name = self.google_ads_resource_names[0]
-        stream_name = stream["stream"]
-        stream_mdata = stream["metadata"]
-        selected_fields = get_selected_fields(stream_mdata)
-        replication_key = "date"
-        state = singer.set_currently_syncing(state, [stream_name, customer["customerId"]])
-        singer.write_state(state)
-
-        conversion_window = timedelta(
-            days=get_conversion_window(config)
-        )
-        conversion_window_date = utils.now().replace(hour=0, minute=0, second=0, microsecond=0) - conversion_window
-
-        bookmark_object = singer.get_bookmark(state, stream["tap_stream_id"], customer["customerId"], default={})
-
-        bookmark_value = bookmark_object.get(replication_key)
-
-        query_date = get_query_date(
-            start_date=config["start_date"],
-            bookmark=bookmark_value,
-            conversion_window_date=singer.utils.strftime(conversion_window_date)
-        )
-
-        end_date = config.get("end_date")
-        if end_date:
-            end_date = utils.strptime_to_utc(end_date)
+        if stream_name in REPORTS_ONE_DAY_ONLY:
+            LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Setting split_by_period value to 1 day.")
+            split_by_period = relativedelta(days=1)
         else:
-            end_date = utils.now()
-
-        if stream_name in REPORTS_WITH_90_DAY_MAX:
-            cutoff = end_date.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=90)
-            query_date = max(query_date, cutoff)
-            if query_date == cutoff:
-                LOGGER.info(
-                    f"Stream: {stream_name} supports only 90 days of data. "
-                    f"Setting start date to {utils.strftime(query_date, '%Y-%m-%d')}."
-                )
+            split_by_period = get_split_by_period(config)
 
         while query_date <= end_date:
-            query = create_one_day_report_query(resource_name, selected_fields, query_date)
-            LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(query_date, '%Y-%m-%d')}.")
+            if split_by_period is None:
+                # If split_by_period is not provided - fetch the whole period
+                # from start_date to end_date in one request.
+                query_last_date = end_date
+            else:
+                query_last_date = min(end_date, query_date + split_by_period - timedelta(days=1))
+            query = create_report_query(resource_name, selected_fields, query_date, query_last_date)
+            LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(query_date, '%Y-%m-%d')}...{utils.strftime(query_last_date, '%Y-%m-%d')}.")
 
             try:
                 response = make_request(gas, query, customer["customerId"], config)
             except GoogleAdsException as err:
                 LOGGER.warning("Failed query: %s", query)
                 LOGGER.critical(str(err.failure.errors[0].message))
-                raise RuntimeError from None
+                raise err
 
 
             with Transformer() as transformer:
@@ -849,12 +835,15 @@ class OneDayResultsReportStream(ReportStream):
 
                     singer.write_record(stream_name, record)
 
-            new_bookmark_value = {replication_key: utils.strftime(query_date)}
+            new_bookmark_value = {replication_key: utils.strftime(query_last_date)}
             singer.write_bookmark(state, stream["tap_stream_id"], customer["customerId"], new_bookmark_value)
 
             singer.write_state(state)
 
-            query_date += timedelta(days=1)
+            if split_by_period is None:
+                break
+            else:
+                query_date += split_by_period
 
 
 def initialize_core_streams(resource_schema):
@@ -1117,7 +1106,7 @@ def initialize_reports(resource_schema):
                 "campaign_criterion_criterion_id",
             },
         ),
-        "click_performance_report": OneDayResultsReportStream(
+        "click_performance_report": ReportStream(
             report_definitions.CLICK_PERFORMANCE_REPORT_FIELDS,
             ["click_view"],
             resource_schema,
