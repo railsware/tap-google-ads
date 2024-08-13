@@ -726,7 +726,7 @@ class ReportStream(BaseStream):
             # Add inclusion metadata
             if self.behavior[report_field]:
                 inclusion = "available"
-                if transformed_field_name in ({"date"} | self.automatic_keys):
+                if transformed_field_name in self.automatic_keys:
                     inclusion = "automatic"
             else:
                 inclusion = "unsupported"
