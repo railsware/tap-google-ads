@@ -1220,6 +1220,13 @@ def initialize_reports(resource_schema):
                 "ad_group_id",
             },
         ),
+        "responsive_search_ad_performance_report": ReportStream(
+            report_definitions.RESPONSIVE_SEARCH_AD_PERFORMANCE_REPORT_FIELDS,
+            ["ad_group_ad"],
+            resource_schema,
+            ["_sdc_record_hash"],
+            {"id"},
+        ),
         "search_query_performance_report": ReportStream(
             report_definitions.SEARCH_QUERY_PERFORMANCE_REPORT_FIELDS,
             ["search_term_view"],
