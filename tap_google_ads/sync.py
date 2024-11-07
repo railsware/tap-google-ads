@@ -9,7 +9,7 @@ LOGGER = singer.get_logger()
 DEFAULT_QUERY_LIMIT = 1000000
 
 CUSTOMER_ACCOUNT_NOT_ACTIVE_ERROR = "The customer account can't be accessed because it is not yet enabled or has been deactivated"
-
+USER_DOES_NOT_HAVE_ACCESS_TO_CUSTOMER_ACCOUNT_ERROR = "User doesn't have permission to access customer."
 
 def get_currently_syncing(state):
     currently_syncing = state.get("currently_syncing")
@@ -73,6 +73,10 @@ def get_query_limit(config):
     except Exception:
         LOGGER.warning(f"The entered query limit is invalid; it will be set to the default query limit of {DEFAULT_QUERY_LIMIT}")
         return DEFAULT_QUERY_LIMIT
+def inactive_or_inaccessible_account(error):
+    message = error.message
+
+    return (CUSTOMER_ACCOUNT_NOT_ACTIVE_ERROR in message or USER_DOES_NOT_HAVE_ACCESS_TO_CUSTOMER_ACCOUNT_ERROR in message)
 
 def do_sync(config, catalog, resource_schema, state):
     # QA ADDED WORKAROUND [START]
@@ -135,7 +139,7 @@ def do_sync(config, catalog, resource_schema, state):
             except GoogleAdsException as e:
                 no_raise = False
                 for error in e.failure.errors:
-                    if CUSTOMER_ACCOUNT_NOT_ACTIVE_ERROR in error.message:
+                    if inactive_or_inaccessible_account(error):
                         LOGGER.warning(
                             f"The ad account with the name \"{customer['customerName']}\" "
                             "can't be accessed because it is not yet enabled or "
