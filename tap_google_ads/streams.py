@@ -1,19 +1,20 @@
-from collections import defaultdict
-import json
 import hashlib
+import json
+from collections import defaultdict
 from datetime import timedelta
+from typing import Any
+
+import backoff
 import singer
-from singer import Transformer
-from singer import utils, metrics
-from google.protobuf.json_format import MessageToJson
+from dateutil.relativedelta import relativedelta
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
+from google.protobuf.json_format import MessageToJson
 from requests.exceptions import ReadTimeout
-import backoff
-
-from dateutil.relativedelta import relativedelta
-
+from singer import Transformer, metrics, utils
 from tap_google_ads.api_version import API_VERSION
+from tap_google_ads.transform import AddFieldsRecordTransformation, SyncContext
+
 from . import report_definitions
 
 LOGGER = singer.get_logger()
@@ -339,7 +340,7 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
         self.format_field_names()
 
         self.build_stream_metadata()
-
+        self.build_transformations()
 
     def extract_field_information(self, resource_schema):
         self.field_exclusions = defaultdict(set)
@@ -445,6 +446,16 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
                 if props["field_details"]["selectable"]:
                     self.stream_metadata[("properties", field)]["tap-google-ads.api-field-names"].append(full_name)
 
+    def build_transformations(self) -> None:
+        self._transformations = [
+            AddFieldsRecordTransformation(
+                fields={
+                    "Account name": lambda context: context.customer["customerName"],
+                    "customer_id": lambda context: context.customer["customerId"],
+                },
+            )
+        ]
+
     def transform_keys(self, json_message):
         """This function does a few things with Google's response for sync queries:
         1) checks a json_message's fields to see if they're for  the current resource
@@ -477,6 +488,7 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
         return transformed_message
 
     def sync(self, sdk_client, customer, stream, config, state, query_limit): # pylint: disable=unused-argument
+        sync_context = SyncContext(customer, config)
         gas = sdk_client.get_service("GoogleAdsService", version=API_VERSION)
         resource_name = self.google_ads_resource_names[0]
         stream_name = stream["stream"]
@@ -530,7 +542,7 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
                         json_message = google_message_to_json(message)
                         transformed_message = self.transform_keys(json_message)
                         record = transformer.transform(transformed_message, stream["schema"], singer.metadata.to_map(stream_mdata))
-                        record = self.add_account_name(customer, record)
+                        record = self._transform_record(record, sync_context)
 
                         singer.write_record(stream_name, record)
                         counter.increment()
@@ -557,8 +569,9 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
             state['bookmarks'].pop(stream["tap_stream_id"])
             singer.write_state(state)
 
-    def add_account_name(self, customer, record):
-        record["Account name"] = customer["customerName"]
+    def _transform_record(self, record: dict[str, Any], sync_context: SyncContext) -> None:
+        for transformation in self._transformations:
+            transformation.transform(record, sync_context)
 
         return record
 
@@ -571,11 +584,11 @@ def get_query_date(start_date, bookmark, conversion_window):
     NOTE: `bookmark` may be None"""
     if not bookmark:
         return singer.utils.strptime_to_utc(start_date)
-    else:
-        return max(
-            singer.utils.strptime_to_utc(bookmark) - conversion_window,
-            singer.utils.strptime_to_utc(start_date)
-        )
+
+    return max(
+        singer.utils.strptime_to_utc(bookmark) - conversion_window,
+        singer.utils.strptime_to_utc(start_date)
+    )
 
 
 class UserInterestStream(BaseStream):
@@ -762,6 +775,7 @@ class ReportStream(BaseStream):
         return transformed_message
 
     def sync(self, sdk_client, customer, stream, config, state, query_limit):
+        sync_context = SyncContext(customer, config)
         gas = sdk_client.get_service("GoogleAdsService", version=API_VERSION)
         resource_name = self.google_ads_resource_names[0]
         stream_name = stream["stream"]
@@ -831,7 +845,7 @@ class ReportStream(BaseStream):
                     transformed_message = self.transform_keys(json_message)
                     record = transformer.transform(transformed_message, stream["schema"])
                     record["_sdc_record_hash"] = generate_hash(record, stream_mdata)
-                    record = self.add_account_name(customer, record)
+                    record = self._transform_record(record, sync_context)
 
                     singer.write_record(stream_name, record)
 
@@ -842,8 +856,8 @@ class ReportStream(BaseStream):
 
             if split_by_period is None:
                 break
-            else:
-                query_date += split_by_period
+
+            query_date += split_by_period
 
 
 def initialize_core_streams(resource_schema):
