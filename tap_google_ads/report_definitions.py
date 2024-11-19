@@ -1312,6 +1312,7 @@ GEO_PERFORMANCE_REPORT_FIELDS = [
     "segments.geo_target_city",
     "segments.geo_target_metro",
     "segments.geo_target_most_specific_location",
+    "segments.geo_target_postal_code",
     "segments.geo_target_region",
     "segments.geo_target_state",
     "segments.month",
