@@ -141,7 +141,7 @@ def do_sync(config, catalog, resource_schema, state):
                 for error in e.failure.errors:
                     if inactive_or_inaccessible_account(error):
                         LOGGER.warning(
-                            f"The ad account with the name \"{customer['customerName']}\" "
+                            f"The ad account with the name \"{customer['customerName']}\" ({customer['customerId']}) "
                             "can't be accessed because it is not yet enabled or "
                             "has been deactivated."
                         )
