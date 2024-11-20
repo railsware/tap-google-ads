@@ -14,6 +14,7 @@ STREAMS = [
     "accessible_bidding_strategy",
     "ad_group",
     "ad_group_ad",
+    "ad_group_ad_asset_view",
     "ad_group_criterion",
     "ad_group_audience_view",
     "age_range_view",
