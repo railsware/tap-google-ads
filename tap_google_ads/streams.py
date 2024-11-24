@@ -1085,6 +1085,13 @@ def initialize_reports(resource_schema):
             ["_sdc_record_hash"],
             {"ad_group_id"},
         ),
+        "ad_group_performance_with_install_conversion_report": ReportStream(
+            report_definitions.AD_GROUP_PERFORMANCE_WITH_INSTALL_CONVERSION_FIELDS,
+            ["ad_group_ad_asset_view"],
+            resource_schema,
+            ["_sdc_record_hash"],
+            {"ad_group_id"},
+        ),
         "ad_performance_report": ReportStream(
             report_definitions.AD_PERFORMANCE_REPORT_FIELDS,
             ["ad_group_ad"],
