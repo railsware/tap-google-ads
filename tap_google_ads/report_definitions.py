@@ -886,6 +886,14 @@ CAMPAIGN_PERFORMANCE_REPORT_FIELDS = [
     "metrics.video_view_rate",
     "metrics.video_views",
     "metrics.view_through_conversions",
+    "segments.date",
+    "segments.day_of_week",
+    "segments.hour",
+    "segments.month",
+    "segments.month_of_year",
+    "segments.quarter",
+    "segments.week",
+    "segments.year",
 ]
 CAMPAIGN_PERFORMANCE_BY_AD_NETWORK_TYPE_REPORT_FIELDS = [
     "bidding_strategy.name",
