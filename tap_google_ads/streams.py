@@ -608,6 +608,13 @@ def get_date_periods(
         period_start = period_end + timedelta(days=1)
 
 
+def get_one_day_split(start_date: datetime, end_date: datetime) -> Iterable[tuple[datetime, datetime]]:
+    period_start = start_date
+    while period_start <= end_date:
+        yield (period_start, period_start)
+        period_start += timedelta(days=1)
+
+
 class UserInterestStream(BaseStream):
     """
     user_interest stream has `user_interest.user_interest_id` instead of a `user_interest.id`
@@ -833,11 +840,12 @@ class ReportStream(BaseStream):
 
         if stream_name in REPORTS_ONE_DAY_ONLY:
             LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Setting split_by_period value to 1 day.")
-            split_by_period = relativedelta(days=1)
+            periods = get_one_day_split(query_date, end_date)
         else:
             split_by_period = get_split_by_period(config)
+            periods = get_date_periods(query_date, end_date, split_by_period)
 
-        for period_start, period_end in get_date_periods(query_date, end_date, split_by_period):
+        for period_start, period_end in periods:
             query = create_report_query(resource_name, selected_fields, period_start, period_end)
             LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(period_start, '%Y-%m-%d')}...{utils.strftime(period_end, '%Y-%m-%d')}.")
 
