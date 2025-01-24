@@ -1,8 +1,8 @@
 import hashlib
 import json
 from collections import defaultdict
-from datetime import timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Iterable
 
 import backoff
 import singer
@@ -591,6 +591,23 @@ def get_query_date(start_date, bookmark, conversion_window):
     )
 
 
+def get_date_periods(
+        start_date: datetime,
+        end_date: datetime,
+        delta: relativedelta
+    ) -> Iterable[tuple[datetime, datetime]]:
+    period_start = start_date
+    while period_start <= end_date:
+        if delta is None:
+            # If delta is not provided - fetch the whole period
+            # from start_date to end_date in one request.
+            period_end = end_date
+        else:
+            period_end = min(end_date, period_start + delta - timedelta(days=1))
+        yield (period_start, period_end)
+        period_start = period_end + timedelta(days=1)
+
+
 class UserInterestStream(BaseStream):
     """
     user_interest stream has `user_interest.user_interest_id` instead of a `user_interest.id`
@@ -820,15 +837,9 @@ class ReportStream(BaseStream):
         else:
             split_by_period = get_split_by_period(config)
 
-        while query_date <= end_date:
-            if split_by_period is None:
-                # If split_by_period is not provided - fetch the whole period
-                # from start_date to end_date in one request.
-                query_last_date = end_date
-            else:
-                query_last_date = min(end_date, query_date + split_by_period - timedelta(days=1))
-            query = create_report_query(resource_name, selected_fields, query_date, query_last_date)
-            LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(query_date, '%Y-%m-%d')}...{utils.strftime(query_last_date, '%Y-%m-%d')}.")
+        for period_start, period_end in get_date_periods(query_date, end_date, split_by_period):
+            query = create_report_query(resource_name, selected_fields, period_start, period_end)
+            LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(period_start, '%Y-%m-%d')}...{utils.strftime(period_end, '%Y-%m-%d')}.")
 
             try:
                 response = make_request(gas, query, customer["customerId"], config)
@@ -849,15 +860,10 @@ class ReportStream(BaseStream):
 
                     singer.write_record(stream_name, record)
 
-            new_bookmark_value = {replication_key: utils.strftime(query_last_date)}
+            new_bookmark_value = {replication_key: utils.strftime(period_end)}
             singer.write_bookmark(state, stream["tap_stream_id"], customer["customerId"], new_bookmark_value)
 
             singer.write_state(state)
-
-            if split_by_period is None:
-                break
-
-            query_date += split_by_period
 
 
 def initialize_core_streams(resource_schema):
