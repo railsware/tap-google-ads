@@ -2,7 +2,7 @@ import hashlib
 import json
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 import backoff
 import singer
@@ -592,23 +592,18 @@ def get_query_date(start_date, bookmark, conversion_window):
 
 
 def get_date_periods(
-        start_date: datetime,
-        end_date: datetime,
-        delta: relativedelta
-    ) -> Iterable[tuple[datetime, datetime]]:
-    period_start = start_date
-    while period_start <= end_date:
-        if delta is None:
-            # If delta is not provided - fetch the whole period
-            # from start_date to end_date in one request.
-            period_end = end_date
-        else:
-            period_end = min(end_date, period_start + delta - timedelta(days=1))
-        yield (period_start, period_end)
-        period_start = period_end + timedelta(days=1)
+        query_date: datetime,
+        periods: Iterable[list[str, str]]
+    ) -> Iterator[tuple[datetime, datetime]]:
+    for period in periods:
+        period_start, period_end = map(utils.strptime_to_utc, period)
+        # Skip periods that are covered by the bookmark because the tap state
+        # and its bookmarks are opaque to the caller.
+        if query_date <= period_start:
+            yield period_start, period_end
 
 
-def get_one_day_split(start_date: datetime, end_date: datetime) -> Iterable[tuple[datetime, datetime]]:
+def get_one_day_split(start_date: datetime, end_date: datetime) -> Iterator[tuple[datetime, datetime]]:
     period_start = start_date
     while period_start <= end_date:
         yield (period_start, period_start)
@@ -841,9 +836,10 @@ class ReportStream(BaseStream):
         if stream_name in REPORTS_ONE_DAY_ONLY:
             LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Setting split_by_period value to 1 day.")
             periods = get_one_day_split(query_date, end_date)
+        elif config_periods:=config.get("periods"):
+            periods = get_date_periods(query_date, config_periods)
         else:
-            split_by_period = get_split_by_period(config)
-            periods = get_date_periods(query_date, end_date, split_by_period)
+            periods = [(query_date, end_date)]
 
         for period_start, period_end in periods:
             query = create_report_query(resource_name, selected_fields, period_start, period_end)
