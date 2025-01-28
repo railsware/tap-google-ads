@@ -66,51 +66,6 @@ def get_request_timeout(config):
     return request_timeout
 
 
-def get_split_by_period(config) -> relativedelta | None:
-    """Constructs the date range for a single API request from config and errors
-    on invalid values.
-
-    The value has the following schema:
-
-    ```
-    "split_by_period": {
-      "days": <int>,
-      "month": <int>,
-      "years": <int>
-    } 
-    ```
-
-    At least "days" or "months" or "years" must be set and be greater than 0.
-
-    If value is set, it will be used to split the requested period into series
-    of date ranges and each date range will be requested separately.
-
-    If value is not set or can't be correctly parsed, the function returns `None`
-    and the tap fetches the whole requested period in one request.
-    """
-
-    split_by_period = config.get("split_by_period")
-
-    if split_by_period is None:
-        return None
-
-    days = split_by_period.get("days") or "0"
-    months = split_by_period.get("months") or "0"
-    years = split_by_period.get("years") or "0"
-
-    try:
-        period = relativedelta(
-            days = int(days),
-            months = int(months),
-            years = int(years),
-        )
-    except (ValueError, TypeError):
-        LOGGER.warning(f"The provided split_by_period value {split_by_period} is invalid; it will be set to None.")
-        return None
-
-    return period
-
-
 def create_nested_resource_schema(resource_schema, fields):
     new_schema = {
         "type": ["null", "object"],
@@ -834,7 +789,7 @@ class ReportStream(BaseStream):
             raise Exception(f"Selected fields is currently limited to {', '.join(selected_fields)}. Please select at least one attribute and metric in order to replicate {stream_name}.")
 
         if stream_name in REPORTS_ONE_DAY_ONLY:
-            LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Setting split_by_period value to 1 day.")
+            LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Splitting the whole requested period into one day intervals.")
             periods = get_one_day_split(query_date, end_date)
         elif config_periods:=config.get("periods"):
             periods = get_date_periods(query_date, config_periods)
