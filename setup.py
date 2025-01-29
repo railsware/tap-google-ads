@@ -12,9 +12,9 @@ setup(name='tap-google-ads',
       install_requires=[
           'singer-python==5.12.2',
           'requests>=2.26.0',
-          'backoff==1.8.0',
-          'google-ads==28.0.0',
-          'protobuf==4.21.7',
+          'backoff~=2.2.1',
+          'google-ads==24.1.0',
+          'protobuf==4.25.3',
           # Necessary to handle gRPC exceptions properly, documented
           # in an issue here: https://github.com/googleapis/python-api-core/issues/301
           'grpcio-status==1.44.0',
