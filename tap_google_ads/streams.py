@@ -1,8 +1,8 @@
 import hashlib
 import json
 from collections import defaultdict
-from datetime import timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Iterable, Iterator
 
 import backoff
 import singer
@@ -64,51 +64,6 @@ def get_request_timeout(config):
         LOGGER.warning(f"The provided request_timeout {request_timeout} is invalid; it will be set to the default request timeout of {DEFAULT_REQUEST_TIMEOUT}.")
         request_timeout = DEFAULT_REQUEST_TIMEOUT
     return request_timeout
-
-
-def get_split_by_period(config) -> relativedelta | None:
-    """Constructs the date range for a single API request from config and errors
-    on invalid values.
-
-    The value has the following schema:
-
-    ```
-    "split_by_period": {
-      "days": <int>,
-      "month": <int>,
-      "years": <int>
-    } 
-    ```
-
-    At least "days" or "months" or "years" must be set and be greater than 0.
-
-    If value is set, it will be used to split the requested period into series
-    of date ranges and each date range will be requested separately.
-
-    If value is not set or can't be correctly parsed, the function returns `None`
-    and the tap fetches the whole requested period in one request.
-    """
-
-    split_by_period = config.get("split_by_period")
-
-    if split_by_period is None:
-        return None
-
-    days = split_by_period.get("days") or "0"
-    months = split_by_period.get("months") or "0"
-    years = split_by_period.get("years") or "0"
-
-    try:
-        period = relativedelta(
-            days = int(days),
-            months = int(months),
-            years = int(years),
-        )
-    except (ValueError, TypeError):
-        LOGGER.warning(f"The provided split_by_period value {split_by_period} is invalid; it will be set to None.")
-        return None
-
-    return period
 
 
 def create_nested_resource_schema(resource_schema, fields):
@@ -591,6 +546,25 @@ def get_query_date(start_date, bookmark, conversion_window):
     )
 
 
+def get_date_periods(
+        query_date: datetime,
+        periods: Iterable[list[str, str]]
+    ) -> Iterator[tuple[datetime, datetime]]:
+    for period in periods:
+        period_start, period_end = map(utils.strptime_to_utc, period)
+        # Skip periods that are covered by the bookmark because the tap state
+        # and its bookmarks are opaque to the caller.
+        if query_date <= period_start:
+            yield period_start, period_end
+
+
+def get_one_day_split(start_date: datetime, end_date: datetime) -> Iterator[tuple[datetime, datetime]]:
+    period_start = start_date
+    while period_start <= end_date:
+        yield (period_start, period_start)
+        period_start += timedelta(days=1)
+
+
 class UserInterestStream(BaseStream):
     """
     user_interest stream has `user_interest.user_interest_id` instead of a `user_interest.id`
@@ -815,20 +789,16 @@ class ReportStream(BaseStream):
             raise Exception(f"Selected fields is currently limited to {', '.join(selected_fields)}. Please select at least one attribute and metric in order to replicate {stream_name}.")
 
         if stream_name in REPORTS_ONE_DAY_ONLY:
-            LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Setting split_by_period value to 1 day.")
-            split_by_period = relativedelta(days=1)
+            LOGGER.info(f"Stream: {stream_name} supports quering by one day only. Splitting the whole requested period into one day intervals.")
+            periods = get_one_day_split(query_date, end_date)
+        elif config_periods:=config.get("periods"):
+            periods = get_date_periods(query_date, config_periods)
         else:
-            split_by_period = get_split_by_period(config)
+            periods = [(query_date, end_date)]
 
-        while query_date <= end_date:
-            if split_by_period is None:
-                # If split_by_period is not provided - fetch the whole period
-                # from start_date to end_date in one request.
-                query_last_date = end_date
-            else:
-                query_last_date = min(end_date, query_date + split_by_period - timedelta(days=1))
-            query = create_report_query(resource_name, selected_fields, query_date, query_last_date)
-            LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(query_date, '%Y-%m-%d')}...{utils.strftime(query_last_date, '%Y-%m-%d')}.")
+        for period_start, period_end in periods:
+            query = create_report_query(resource_name, selected_fields, period_start, period_end)
+            LOGGER.info(f"Requesting {stream_name} data for {utils.strftime(period_start, '%Y-%m-%d')}...{utils.strftime(period_end, '%Y-%m-%d')}.")
 
             try:
                 response = make_request(gas, query, customer["customerId"], config)
@@ -849,15 +819,10 @@ class ReportStream(BaseStream):
 
                     singer.write_record(stream_name, record)
 
-            new_bookmark_value = {replication_key: utils.strftime(query_last_date)}
+            new_bookmark_value = {replication_key: utils.strftime(period_end)}
             singer.write_bookmark(state, stream["tap_stream_id"], customer["customerId"], new_bookmark_value)
 
             singer.write_state(state)
-
-            if split_by_period is None:
-                break
-
-            query_date += split_by_period
 
 
 def initialize_core_streams(resource_schema):
