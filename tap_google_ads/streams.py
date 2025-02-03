@@ -1140,7 +1140,17 @@ def initialize_reports(resource_schema):
             },
         ),
         "geo_performance_report": ReportStream(
-            report_definitions.GEO_PERFORMANCE_REPORT_FIELDS,
+            report_definitions.AD_GROUP_GEO_PERFORMANCE_REPORT_FIELDS,
+            ["geographic_view"],
+            resource_schema,
+            ["_sdc_record_hash"],
+            {
+                "geographic_view_country_criterion_id",
+                "geographic_view_location_type",
+            },
+        ),
+        "campaign_geo_performance_report": ReportStream(
+            report_definitions.CAMPAIGN_GEO_PERFORMANCE_REPORT_FIELDS,
             ["geographic_view"],
             resource_schema,
             ["_sdc_record_hash"],
