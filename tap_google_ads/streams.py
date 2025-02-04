@@ -1075,6 +1075,13 @@ def initialize_reports(resource_schema):
                 "ad_group_id",
              },
         ),
+        "asset_performance_report": ReportStream(
+            report_definitions.ASSET_GROUP_PERFORMANCE_REPORT_FIELDS,
+            ["asset_group"],
+            resource_schema,
+            ["_sdc_record_hash"],
+            {"asset_group_id"},
+        ),
         "campaign_performance_report": ReportStream(
             report_definitions.CAMPAIGN_PERFORMANCE_REPORT_FIELDS,
             ["campaign"],
