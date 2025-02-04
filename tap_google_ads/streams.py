@@ -1075,7 +1075,7 @@ def initialize_reports(resource_schema):
                 "ad_group_id",
              },
         ),
-        "asset_performance_report": ReportStream(
+        "asset_group_performance_report": ReportStream(
             report_definitions.ASSET_GROUP_PERFORMANCE_REPORT_FIELDS,
             ["asset_group"],
             resource_schema,
