@@ -9,7 +9,7 @@ import singer
 from dateutil.relativedelta import relativedelta
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
-from google.protobuf.json_format import MessageToJson
+from google.protobuf.json_format import MessageToDict
 from requests.exceptions import ReadTimeout
 from singer import Transformer, metrics, utils
 from tap_google_ads.api_version import API_VERSION
@@ -263,9 +263,7 @@ def google_message_to_json(message):
     instances of the key `"type_"` before `json.loads`ing it
     """
 
-    json_string = MessageToJson(message, preserving_proto_field_name=True)
-    json_string = json_string.replace('"type_":', '"type":')
-    return json.loads(json_string)
+    return MessageToDict(message, preserving_proto_field_name=True)
 
 
 def filter_out_non_attribute_fields(fields):
