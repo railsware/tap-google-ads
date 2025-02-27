@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import cProfile
 import logging
 import singer
 from singer import utils
@@ -31,7 +32,9 @@ def main_impl():
         do_discover(resource_schema)
         LOGGER.info("Discovery complete")
     elif args.catalog:
-        do_sync(args.config, args.catalog.to_dict(), resource_schema, state)
+        with cProfile.Profile() as p:
+            do_sync(args.config, args.catalog.to_dict(), resource_schema, state)
+        p.dump_stats("tap-google-ads.stats")
         LOGGER.info("Sync Completed")
     else:
         LOGGER.info("No properties were selected")
