@@ -436,6 +436,9 @@ class BaseStream:  # pylint: disable=too-many-instance-attributes
 
         if "type_" in transformed_message:
             transformed_message["type"] = transformed_message.pop("type_")
+            for sub_value in transformed_message:
+                if isinstance(sub_value, dict) and "type_" in sub_value:
+                    sub_value["type"] = sub_value["type_"]
 
         return transformed_message
 
@@ -745,6 +748,9 @@ class ReportStream(BaseStream):
 
         if "type_" in transformed_message:
             transformed_message["type"] = transformed_message.pop("type_")
+            for sub_value in transformed_message:
+                if isinstance(sub_value, dict) and "type_" in sub_value:
+                    sub_value["type"] = sub_value["type_"]
 
         return transformed_message
 
