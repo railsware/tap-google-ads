@@ -743,6 +743,9 @@ class ReportStream(BaseStream):
                      for key, sub_value in value.items()}
                 )
 
+        if "type_" in transformed_message:
+            transformed_message["type"] = transformed_message.pop("type_")
+
         return transformed_message
 
     def sync(self, sdk_client, customer, stream, config, state, query_limit):
