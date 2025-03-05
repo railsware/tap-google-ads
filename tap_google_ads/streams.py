@@ -9,7 +9,7 @@ import singer
 from dateutil.relativedelta import relativedelta
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
-from google.protobuf.json_format import MessageToDict
+from google.protobuf.json_format import MessageToJson
 from requests.exceptions import ReadTimeout
 from singer import Transformer, metrics, utils
 from tap_google_ads.api_version import API_VERSION
@@ -258,11 +258,14 @@ def make_request(gas, query, customer_id, config=None):
 
 def google_message_to_json(message):
     """
-    The proto field name for `type` is `type_` which will be
-    renamed to `type` by the Transformer.
+    The proto field name for `type` is `type_` which will
+    get stripped by the Transformer. So we replace all
+    instances of the key `"type_"` before `json.loads`ing it
     """
 
-    return MessageToDict(message, preserving_proto_field_name=True)
+    json_string = MessageToJson(message, preserving_proto_field_name=True)
+    json_string = json_string.replace('"type_":', '"type":')
+    return json.loads(json_string)
 
 
 def filter_out_non_attribute_fields(fields):
