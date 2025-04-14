@@ -552,9 +552,9 @@ def get_date_periods(
     ) -> Iterator[tuple[datetime, datetime]]:
     for period in periods:
         period_start, period_end = map(utils.strptime_to_utc, period)
-        # Skip periods that are covered by the bookmark because the tap state
-        # and its bookmarks are opaque to the caller.
-        if query_date <= period_start:
+        # Skip periods that are fully covered by the bookmark because the tap
+        # state and its bookmarks are opaque to the caller.
+        if period_end >= query_date:
             yield period_start, period_end
 
 
