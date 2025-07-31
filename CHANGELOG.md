@@ -1,8 +1,54 @@
 # Changelog
 
+## v2.0.0
+  * Updates API version to 20
+  * Add new stream `assets`
+  * Remove feed-related streams
+  * Updates pkg version to 27.0.0
+  * Updates `singer-python` to 6.1.1
+  * [#97](https://github.com/singer-io/tap-google-ads/pull/97)
+
+## v1.10.0
+  * Fail the connection once every 3 days to ensure customers are aware of the version deprecation. [#100](https://github.com/singer-io/tap-google-ads/pull/100)
+
+## v1.9.1
+  * Bump dependency versions for twistlock compliance
+  * Update circleci config to handle linting errors
+  * [#96](https://github.com/singer-io/tap-google-ads/pull/96)
+
+## v1.9.0
+  * Updates API version to 17
+  * [#95](https://github.com/singer-io/tap-google-ads/pull/95)
+
+## v1.8.0
+  * Updates API version to 17
+  * Updates pkg version to 25.0.0
+  * [#93](https://github.com/singer-io/tap-google-ads/pull/93)
+
+## v1.7.0
+  * Run on python 3.11.7 [#88](https://github.com/singer-io/tap-google-ads/pull/88)
+
 ## v1.6.0
   * Updates API version to 15
   * Updates pkg version to 22.1.0
+  * [#86](https://github.com/singer-io/tap-google-ads/pull/86)
+
+## v1.5.0
+  * Updates API version to 13
+  * Updates pkg version to 21.0.0
+  * [#82](https://github.com/singer-io/tap-google-ads/pull/82)
+
+
+## v1.4.0
+  * Updates API version to 12
+  * Updates pkg version to 19.0.0
+  * Removes `gmail_ad` fields from `ad_performance_report` as they are no longer available after API version bump.
+  * [#76](https://github.com/singer-io/tap-google-ads/pull/76)
+
+## v1.3.4
+  * Updates API Version to 11
+  * Updates pkg version to 17.0.0
+  * [#79](https://github.com/singer-io/tap-google-ads/pull/79)
 
 ## v1.3.3
   * Update applicable core streams to use limit clause. Updates tests [#68](https://github.com/singer-io/tap-google-ads/pull/68)
