@@ -6,7 +6,6 @@ from typing import Any, Iterable, Iterator
 
 import backoff
 import singer
-from dateutil.relativedelta import relativedelta
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
 from google.protobuf.json_format import MessageToJson
