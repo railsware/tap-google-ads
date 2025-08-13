@@ -37,7 +37,6 @@ This tap:
     - [Keywordless Query Report](https://developers.google.com/google-ads/api/fields/v10/dynamic_search_ads_search_term_view)
     - [Keywords Performance Report](https://developers.google.com/google-ads/api/fields/v10/keyword_view)
     - [Landing Page Report](https://developers.google.com/google-ads/api/fields/v10/landing_page_view)
-    - [Placeholder Feed Item Report](https://developers.google.com/google-ads/api/fields/v10/feed_item)
     - [Placeholder Report](https://developers.google.com/google-ads/api/fields/v10/feed_placeholder_view)
     - [Placement Performance Report](https://developers.google.com/google-ads/api/fields/v10/managed_placement_view)
     - [Search Query Performance Report](https://developers.google.com/google-ads/api/fields/v10/search_term_view)
