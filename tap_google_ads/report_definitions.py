@@ -2672,7 +2672,6 @@ AD_GROUP_PERFORMANCE_WITH_INSTALL_CONVERSION_FIELDS = [
     "campaign.end_date",
     "campaign.dynamic_search_ads_setting.use_supplied_urls_only",
     "campaign.dynamic_search_ads_setting.language_code",
-    "campaign.dynamic_search_ads_setting.feeds",
     "campaign.dynamic_search_ads_setting.domain_name",
     "campaign.demand_gen_campaign_settings.upgraded_targeting",
     "campaign.commission.commission_rate_micros",
