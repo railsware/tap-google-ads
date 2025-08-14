@@ -6,7 +6,6 @@ from typing import Any, Iterable, Iterator
 
 import backoff
 import singer
-from dateutil.relativedelta import relativedelta
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core.exceptions import ServerError, TooManyRequests
 from google.protobuf.json_format import MessageToJson
@@ -876,6 +875,13 @@ def initialize_core_streams(resource_schema):
              },
             filter_param = "ad_group_ad.ad.id"
         ),
+        "assets": BaseStream(
+            report_definitions.ASSET_FIELDS,
+            ["asset"],
+            resource_schema,
+            ["id"],
+            filter_param="asset.id"
+        ),
         "bidding_strategies": BaseStream(
             report_definitions.BIDDING_STRATEGY_FIELDS,
             ["bidding_strategy"],
@@ -936,25 +942,6 @@ def initialize_core_streams(resource_schema):
             resource_schema,
             ["id"],
            filter_param="carrier_constant.id"
-        ),
-        "feed": BaseStream(
-            report_definitions.FEED_FIELDS,
-            ["feed"],
-            resource_schema,
-            ["id"],
-            {"customer_id"},
-            filter_param="feed.id"
-        ),
-        "feed_item": BaseStream(
-            report_definitions.FEED_ITEM_FIELDS,
-            ["feed_item"],
-            resource_schema,
-            ["id"],
-            {
-                "customer_id",
-                "feed_id",
-            },
-            filter_param="feed_item.id"
         ),
         "geo_constants": BaseStream(
             report_definitions.GEO_CONSTANTS_FIELDS,
@@ -1185,23 +1172,6 @@ def initialize_reports(resource_schema):
             resource_schema,
             ["_sdc_record_hash"],
             {"landing_page_view_unexpanded_final_url"},
-        ),
-        "placeholder_feed_item_report": ReportStream(
-            report_definitions.PLACEHOLDER_FEED_ITEM_REPORT_FIELDS,
-            ["feed_item"],
-            resource_schema,
-            ["_sdc_record_hash"],
-            {
-                "feed_id",
-                "feed_item_id",
-             }
-        ),
-        "placeholder_report": ReportStream(
-            report_definitions.PLACEHOLDER_REPORT_FIELDS,
-            ["feed_placeholder_view"],
-            resource_schema,
-            ["_sdc_record_hash"],
-            {"feed_placeholder_view_placeholder_type"},
         ),
         "placement_performance_report": ReportStream(
             report_definitions.PLACEMENT_PERFORMANCE_REPORT_FIELDS,
