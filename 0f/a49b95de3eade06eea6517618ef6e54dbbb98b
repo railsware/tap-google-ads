@@ -1,0 +1,28 @@
+tap_google_ads/api_version.py
+  s_603a563e4292c2::t_0042de22c790f2 1
+setup.py
+  s_603a563e4292c2::t_0042de22c790f2 6,16
+tap_google_ads/report_definitions.py
+  s_603a563e4292c2::t_0042de22c790f2 51,94-95,166,231-232,438,472-473,539,564-565,625,650-651,700,725-726,752,762,796,870-871,977,1002-1003,1067,1092-1093,1132,1151-1152,1211,1236-1237,1276,1292-1293,1491,1553-1554,1597,1616-1617,1677,1701-1702,1822,1856-1857,1903,1926-1927,2052,2068-2069,2111,2128-2129,2158,2168,2200,2273-2274,2571,2637
+CHANGELOG.md
+  s_603a563e4292c2::t_eda5bd65e84dda 3-12
+README.md
+  s_603a563e4292c2::t_0042de22c790f2 11-21
+  s_603a563e4292c2::t_729126333755eb 23-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0fa49b95de3eade06eea6517618ef6e54dbbb98b",
+  "prompts": {},
+  "sessions": {
+    "s_603a563e4292c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36900359-1a3f-4722-9b81-c67225934a5a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andrii Porokhnavets <andrii.porokhnavets@railsware.com>"
+    }
+  }
+}
