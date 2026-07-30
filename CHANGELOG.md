@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.0.0
+  * Updates API version to 25
+  * Updates `google-ads` to 31.2.0
+  * Renames TrueView video metrics (API v22 rename): `metrics.average_cpv` -> `metrics.trueview_average_cpv`, `metrics.video_view_rate` -> `metrics.video_trueview_view_rate`, `metrics.video_views` -> `metrics.video_trueview_views`
+  * Renames `campaign.start_date`/`campaign.end_date` to `campaign.start_date_time`/`campaign.end_date_time` (API v23 rename)
+  * Removes `ad_group_ad.ad.call_ad.*` fields (call ads removed in API v23)
+  * Removes `ad_group_ad.ad.demand_gen_multi_asset_ad.lead_form_only` (removed in API v23)
+  * Removes `campaign.url_expansion_opt_out` (removed in API v22)
+  * Removes `campaign.video_brand_safety_suitability` (removed in API v24; the customer-level field remains)
+
 ## v2.0.0
   * Updates API version to 20
   * Add new stream `assets`
