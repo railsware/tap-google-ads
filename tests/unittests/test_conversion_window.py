@@ -244,12 +244,18 @@ class TestGetConversionWindow(unittest.TestCase):
         expected = 12
         self.assertEqual(expected, actual)
 
-    def test_conversion_date_outside_allowable_range(self):
-        with self.assertRaises(RuntimeError):
-            get_conversion_window({"conversion_window": 42})
+    def test_conversion_date_between_30_and_90_is_allowed(self):
+        self.assertEqual(42, get_conversion_window({"conversion_window": 42}))
+        self.assertEqual(45, get_conversion_window({"conversion_window": "45"}))
 
-        with self.assertRaises(RuntimeError):
-            get_conversion_window({"conversion_window": "42"})
+    def test_conversion_date_on_range_bounds(self):
+        self.assertEqual(1, get_conversion_window({"conversion_window": 1}))
+        self.assertEqual(90, get_conversion_window({"conversion_window": "90"}))
+
+    def test_conversion_date_outside_allowable_range(self):
+        for value in ("0", -1, 91, "91", 365):
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                get_conversion_window({"conversion_window": value})
 
     def test_non_int_or_str_conversion_date(self):
         with self.assertRaises(RuntimeError):
