@@ -1,0 +1,25 @@
+tap_google_ads/streams.py
+  s_6b6642ebe4406d::t_31ce68ac0a0cec 38-39,52,55-57
+tests/test_google_ads_conversion_window.py
+  s_6b6642ebe4406d::t_dd157b5f9c9b42 24
+tests/test_google_ads_conversion_window_invalid.py
+  s_6b6642ebe4406d::t_77175982b5fa8c 25
+tests/unittests/test_conversion_window.py
+  s_6b6642ebe4406d::t_04779897f0fa09 247-249,251-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "875056f17fd63b94387068f252c2938a4e6b531f",
+  "prompts": {},
+  "sessions": {
+    "s_6b6642ebe4406d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15b742f3-c08a-44e1-9768-ada9816e05af",
+        "model": "unknown"
+      },
+      "human_author": "Andrii Porokhnavets <andrii.porokhnavets@railsware.com>"
+    }
+  }
+}
