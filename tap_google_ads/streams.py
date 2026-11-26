@@ -35,6 +35,8 @@ REPORTS_ONE_DAY_ONLY = frozenset(
 )
 
 DEFAULT_CONVERSION_WINDOW = 30
+# Google Ads allows click-through conversion windows of up to 90 days.
+MAX_CONVERSION_WINDOW = 90
 DEFAULT_REQUEST_TIMEOUT = 900 # in seconds
 
 
@@ -47,10 +49,12 @@ def get_conversion_window(config):
     except (ValueError, TypeError) as err:
         raise RuntimeError("Conversion Window must be an int or string") from err
 
-    if conversion_window in set(range(1,31)) or conversion_window in {60, 90}:
+    if 1 <= conversion_window <= MAX_CONVERSION_WINDOW:
         return conversion_window
 
-    raise RuntimeError("Conversion Window must be between 1 - 30 inclusive, 60, or 90")
+    raise RuntimeError(
+        f"Conversion Window must be between 1 - {MAX_CONVERSION_WINDOW} inclusive"
+    )
 
 
 def get_request_timeout(config):

@@ -21,7 +21,7 @@ class ConversionWindowBaseTest(GoogleAdsBase):
 
     Verify connection can be created, and tap can discover and sync with a conversion window
     set to the following values
-      Acceptable values: { 1 through 30, 60, 90}
+      Acceptable values: { 1 through 90 }
     """
     conversion_window = ''
 
